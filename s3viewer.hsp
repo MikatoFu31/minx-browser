@@ -1,0 +1,306 @@
+#include "hspinet.as"
+#packopt hide 1
+#packopt name "minx.exe"
+#include "hsptrim.as"
+#include "html_s3.hsp"
+#include "HyperLinkProcessor.as"
+*createenv
+	buffer 1,640,9600
+	screen 0,640,480
+	title "minx browser"
+	sdim urlget,65536
+	sdim pastdomain,256
+	dim loadflag
+	dim filetype
+	sdim history,65536,8
+	urlget="About\\about.html"
+*init
+	gsel 0
+	clrobj
+	gsel 1
+	history(0)=0
+	repeat length(history)-1
+		history(cnt+1)=history(cnt)
+	loop
+	cls
+	//NET
+	if (filetype=1 & strmid(urlget,0,7)!"file://") | strmid(urlget,0,7)="http://" | strmid(urlget,0,8)="https://"{
+		filetype=1
+	}
+	//LOCAL
+	if (filetype=0 & strmid(urlget,0,7)!"http://" & strmid(urlget,0,8)!"https://") &  strmid(urlget,0,7)!"file://"{
+		filetype=0
+	}
+	getstr urlget,urlget,0,' ',65536
+	htmls3_start
+	sdim s3source,16777216
+	sdim s3converted,16777216
+	sdim s3one,65536
+	sdim neterrorstrings,65536
+	
+	
+//	chdir "About"
+//	bload "about.html",s3source
+	gsel 0
+	title "minx browser:リクエスト中..."
+	gsel 1
+	if filetype=1{
+		#include "netautoget.as"
+	}else{
+		bload urlget,s3source
+	}
+	gsel 0
+	title "minx browser:変換中..."
+	gsel 1
+	s3source=htmls3_transfer(s3source)
+	sdim s3one,4096
+	sdim s3operate,256
+	sdim s3param,4096
+	dim fontsize
+	fontsize=4
+	dim maxfontsize
+	dim cposx
+	dim cposy
+	dim fontcolorhex
+	dim fontr
+	dim fontg
+	dim fontb
+	dim fontstyle
+	dim linkset
+	dim linkadd
+	dim body
+	dim scrolly
+	
+	HLK_START
+*decoad
+	gsel 0
+	title "minx browser:レンダリング中..."
+	gsel 1
+	notesel s3source
+	repeat notemax
+		noteget s3one,cnt
+		s3one=trim(s3one)
+		if strmid(s3one,0,1)="$"{
+			s3one=strmid(s3one,1,strlen(s3one)-1)
+			if body=1:gosub *strings
+		}
+		if strmid(s3one,0,1)="#"{
+			s3one=strmid(s3one,1,strlen(s3one)-1)
+			gosub *tags
+		}
+		
+	loop
+	goto *after_render
+	stop
+	
+	
+	
+	
+*strings
+	repeat
+		if s3one=""{
+			linkset=0
+			break
+		}
+		if maxfontsize<fontsize*4{
+			maxfontsize=fontsize*4
+		}
+		if ((fontsize*2)*strlen(s3one)+cposx)>=ginfo_sx{
+			pos cposx,cposy
+			font msgothic,fontsize*4,fontstyle
+			color fontr,fontg,fontb
+			
+			mes strmid(s3one,0,(ginfo_sx-cposx)/(fontsize*2))
+			
+			
+			
+			
+			s3one=strmid(s3one,(ginfo_sx-cposx)/(fontsize*2),strlen(s3one)-(ginfo_sx-cposx)/(fontsize*2))
+			cposx+=(fontsize*2)*strlen(s3one)
+			gosub *br
+			linkset=0
+			continue
+		}else{
+			if linkset=1{
+				HLK2_ADD linkadd,cposx,cposy,cposx+(fontsize*2)*strlen(s3one),cposy+fontsize*4
+				//For Debug
+				color 255,192,192
+				boxf cposx,cposy,cposx+(fontsize*2)*strlen(s3one),cposy+fontsize*4
+				//
+			}
+			
+			
+			pos cposx,cposy
+			color fontr,fontg,fontb
+			font msgothic,fontsize*4,fontstyle
+			mes s3one
+			
+			
+			cposx+=(fontsize*2)*strlen(s3one)
+			linkset=0
+			break
+		}
+		await
+	loop
+	return
+	
+*br
+	cposx=0
+	cposy+=maxfontsize
+	maxfontsize=0
+	return
+	
+	
+	
+	
+*tags
+	getstr s3operate,s3one,0,' ',256
+	s3operate=trim(s3operate)
+	s3param=strmid(s3one,strsize,strlen(s3one)-strsize)
+	s3param=trim(s3param)
+	if s3operate="font_size"{
+		fontsize=int(s3param)
+	}
+	if s3operate="br"{
+		gosub *br
+	}
+	if s3operate="body"{
+		body=1
+	}
+	if s3operate="/body"{
+		body=0
+	}
+	if s3operate="/script"{
+		body=1
+	}
+	if s3operate="script"{
+		body=0
+	}
+	if s3operate="font_color"{
+		if strlen(s3param)=6{
+			fontcolorhex=int("$"+s3param)
+			fontr=fontcolorhex/65536
+			fontg=fontcolorhex/256
+			fontb=fontcolorhex/1
+		}
+	}
+	if s3operate="font_style"{
+		fontstyle+=int(s3param)
+	}
+	if s3operate="a_href"{
+		linkset=1
+		linkadd=s3param
+	}
+	return
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+*after_render
+	scrolly=0
+	onclick goto *clicked
+	onkey goto *key_pushed
+	gsel 0
+	pos 0,0
+	gcopy 1,0,scrolly*16,640,480
+	title "minx browser"
+	stop
+*clicked
+	onkey 0
+	onclick 0
+	if HLK2_MOUSECHECK(mousex,mousey+scrolly*16)!""{
+		urlget=HLK2_MOUSECHECK(mousex,mousey+scrolly*16)
+		goto *init
+	}
+	onclick 1
+	onkey 1
+	stop
+*key_pushed
+	onkey 0
+	onclick 0
+	if wparam=82:gosub *reload				//RELOAD
+	if wparam=74:gosub *urljump				//URLJUMP
+	if wparam=38:scrolly--					//↑
+	if wparam=40:scrolly++					//↓
+	gsel 0
+	redraw 0
+	pos 0,0
+	color 255,255,255
+	boxf
+	pos 0,0
+	color 0,0,0
+	scrolly=limit(scrolly,0,600)
+	gcopy 1,0,scrolly*16,640,480
+	redraw 1
+	
+	onkey 1
+	onclick 1
+	if loadflag=1{
+		loadflag=0
+		goto *init
+	}
+	loadflag=0
+	stop
+	
+	
+	
+	
+	
+	
+*urljump
+	gsel 0
+	color 192,192,192
+	boxf 0,460,640,480
+	onkey goto *inputbox
+		pos 0,460
+		color 0,0,0
+		mes urlget
+	stop
+	
+	
+	
+*inputbox
+	if 46<=iparam & iparam<=96{
+		ky=iparam
+		if 65<=iparam & iparam<=90{
+			ky+=32
+		}
+		poke urlget,strlen(urlget),ky
+	}
+	if iparam=8{
+		urlget=strmid(urlget,0,strlen(urlget)-1)
+	}
+	if iparam=13{
+		goto *init
+	}
+		color 192,192,192
+		boxf 0,460,640,480
+		pos 0,460
+		color 0,0,0
+		mes urlget
+	stop
+	
+	
+	
+*urljumper
+*reload
+	loadflag=1
+	return
+	
+	
+	
+	
+	
+	

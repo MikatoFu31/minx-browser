@@ -1,0 +1,88 @@
+#module htmls3
+	#deffunc htmls3_start
+		sdim htmls3manifest,65536
+		bload "s3_html_manifest.manifest",htmls3manifest
+	return 0
+	#defcfunc htmls3_transfer str htmlsrsr
+		sdim translatefrom,4096
+		sdim translateto,4096
+		sdim htmlsource,16777216
+		sdim htmlone,4096
+		sdim s3source,16777216
+		sdim s3finish,16777216
+		htmlsource=htmlsrsr
+		sdim htmlsrc,10000
+		sdim tagone,65536
+		sdim tagoperate,256
+		sdim tagmoment,65536
+		dim readindex
+		dim tagtype
+		strrep htmlsource,"\n"," "
+		strrep htmlsource,"\t",""
+		if instr(htmlsource,0,"</html>")!-1{
+			htmlsource=strmid(htmlsource,0,instr(htmlsource,0,"</html>")+7)
+		}else{
+			htmlsource="</html>"
+		}
+		notesel htmlsrc
+		repeat 32768
+			if cnt\2=0{
+				tagone=strmid(htmlsource,readindex,instr(htmlsource,readindex,"<"))
+				readindex+=instr(htmlsource,readindex,"<")
+				tagone=trim(tagone)
+				noteadd tagone,cnt,0
+			}
+			if cnt\2=1{
+				tagone=strmid(htmlsource,readindex,instr(htmlsource,readindex,">")+1)
+				readindex+=instr(htmlsource,readindex,">")+1
+				tagone=trim(tagone)
+				tagone=strmid(tagone,1,strlen(tagone)-2)
+				noteadd tagone,cnt,0
+			}
+			if readindex>=strlen(htmlsource)-1:break
+			await 0
+		loop
+		
+		notesel htmlsrc
+		repeat notemax
+			notesel htmlsrc
+				noteget htmlone,cnt
+			if cnt\2=0{		//text
+				notesel s3source
+				noteadd "$"+htmlone,cnt,0
+			}else{			//tag
+				notesel s3source
+				noteadd "#"+htmlone,cnt,0
+			}
+			await
+		loop
+		notesel s3source
+		repeat notemax
+			noteget tagone,cnt
+			if strmid(tagone,0,1)="$"{
+				s3finish+=tagone+"\n"
+			}else{
+				getstr tagoperate,tagone,0,' ',256
+				s3finish+=tagoperate+"\n"
+				tagone=strmid(tagone,strsize,strlen(tagone)-strsize)
+				tagone=trim(tagone)
+				if tagone!""{
+					if instr(tagone,0,"=")!-1{
+						poke tagone,instr(tagone,0,"="),' '
+					}
+					strrep tagone,"\"",""
+					s3finish+="#"+strmid(tagoperate,1,strlen(tagoperate)-1)+"_"+tagone+"\n"
+				}
+			}
+			
+		loop
+		notesel htmls3manifest
+		repeat notemax/2
+			noteget translatefrom,cnt*2
+			noteget translateto,cnt*2+1
+			strrep translateto,"%0A%","\n"
+			strrep s3finish,"\n"+translatefrom+"\n","\n"+translateto+"\n"
+			
+		loop
+	return s3finish
+#global

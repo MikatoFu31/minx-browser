@@ -1,0 +1,46 @@
+#b
+#font_style 1
+#/b
+#font_style -1
+#i
+#font_style 2
+#/i
+#font_style -2
+#s
+#font_style 8
+#/s
+#font_style -8
+#u
+#font_style 4
+#/u
+#font_style -4
+#p
+#br
+#/p
+#br
+#div
+#br
+#br/
+#br
+#/br
+#br
+#/h1
+#font_size 4%0A%#br
+#/h2
+#font_size 4%0A%#br
+#/h3
+#font_size 4%0A%#br
+#/h4
+#font_size 4%0A%#br
+#h1
+#font_size 10%0A%#br
+#h2
+#font_size 8%0A%#br
+#h3
+#font_size 6%0A%#br
+#h4
+#font_size 5%0A%#br
+#/font
+#font_size 4
+#li
+#br
